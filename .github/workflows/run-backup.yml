@@ -1,0 +1,32 @@
+name: Notion Automated Backup
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # This runs every night at midnight UTC
+  workflow_dispatch: # This adds a button so you can run it manually
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv (Python manager)
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Run Notion Backup
+        env:
+          NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}
+          NOTION_SPACE_ID: ${{ secrets.NOTION_SPACE_ID }}
+        run: |
+          # This runs the script using 'uv' which handles dependencies for you
+          uv run notionbackup.py --token "$NOTION_TOKEN_V2" --space "$NOTION_SPACE_ID" --output ./backup
+
+      - name: Commit and Push Backup
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add backup/
+          git commit -m "Automated Notion Backup: $(date)" || echo "No changes to commit"
+          git push
